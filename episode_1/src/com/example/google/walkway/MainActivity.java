@@ -47,20 +47,21 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 public class MainActivity extends FragmentActivity {
-
     /**
      * The list of places that we'd list to show on the map. An ArrayList since
-     * we need quick lookup.
+     * we need quick lookup by index.
      */
-    private static final ArrayList<Place> PLACES = new ArrayList<Place>(5);
+    private static final ArrayList<Place> PLACES = new ArrayList<Place>();
 
     /* Initialize the static collection. */
     static {
         PLACES.add(new Place("Ferry Building", 37.7955, -122.3937));
         PLACES.add(new Place("Exploratorium", 37.801434, -122.397561));
+        PLACES.add(new Place("Greenwich Street Stairs", 37.8030764, -122.4035185));
         PLACES.add(new Place("Coit Tower", 37.8025, -122.405833));
         PLACES.add(new Place("Dragon (Chinatown) Gate", 37.790582, -122.405624));
         PLACES.add(new Place("Union Square", 37.788056, -122.4075));
+        PLACES.add(new Place("Yerba Buena Gardens", 37.785607, -122.402691));
     }
 
     private GoogleMap mMap;
@@ -134,7 +135,7 @@ public class MainActivity extends FragmentActivity {
 
         // Show that the first marker has focus.
         mMarkers[0].setIcon(BitmapDescriptorFactory
-                .defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                .defaultMarker(BitmapDescriptorFactory.HUE_RED));
 
         // Once the map has been loaded, zoom to the markers.
         mMap.setOnCameraChangeListener(new OnCameraChangeListener() {
@@ -186,7 +187,7 @@ public class MainActivity extends FragmentActivity {
                 // Replace the currently selected maker with the full (focused)
                 // marker.
                 mMarkers[position].setIcon(BitmapDescriptorFactory
-                        .defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                        .defaultMarker(BitmapDescriptorFactory.HUE_RED));
 
                 lastPage = position;
                 
