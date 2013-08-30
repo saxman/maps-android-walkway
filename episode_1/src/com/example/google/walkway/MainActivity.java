@@ -64,22 +64,29 @@ public class MainActivity extends FragmentActivity {
         PLACES.add(new Place("Yerba Buena Gardens", 37.785607, -122.402691));
     }
 
+    // UI constants
+    private static final float PLACE_DETAIL_ZOOM = 18f;
+    private static final float PLACE_MARKER_HUE = BitmapDescriptorFactory.HUE_RED;
+    private static final int MAP_BOUNDS_PADDING = 150;
+
+//    private static final String LOG_TAG = MainActivity.class.getName();
+    
     private GoogleMap mMap;
 
     /** A map from marker to place so we can get a place from marker events. */
     private HashMap<Marker, Place> mMarkerPlaceMap = new HashMap<Marker, Place>(PLACES.size());
 
     private Marker[] mMarkers = new Marker[PLACES.size()];
-    
+
     /** The ViewPager for cycling through the list of places. */
     private ViewPager mPlaceViewPager;
-    
+
     /** Bitmap used for drawing the (dot) markers that don't have focus. */
     private Bitmap mDotMarkerBitmap;
 
     /** The initial camera position of the map. Used to reset the map state. */
     private CameraPosition mMapInitPosition;
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,22 +102,30 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     public void onBackPressed() {
-        if (mPlaceViewPager.getCurrentItem() == 0 && mMap.getCameraPosition().equals(mMapInitPosition)) {
-            // If the map is at default zoom and the first place is selected,
-            // execute default back action.
-            super.onBackPressed();
-        } else {
-            mPlaceViewPager.setCurrentItem(0);
-
-            LatLngBounds.Builder builder = LatLngBounds.builder();
+        if (!mMap.getCameraPosition().equals(mMapInitPosition)) {
+            // If the map is zoomed or panned, reset its position.
+            // Oddly, cannot just re-use mMapInitPosition to re-position.
+            // newCameraPosition(mMapInitPosition) != mMapInitPosition
+            final LatLngBounds.Builder builder = LatLngBounds.builder();
             for (Marker marker : mMarkers) {
                 builder.include(marker.getPosition());
             }
-            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 150));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),
+                    MAP_BOUNDS_PADDING));
+        } else if (mPlaceViewPager.getCurrentItem() != 0) {
+            // Reset the pager to its original state.
+            mPlaceViewPager.setCurrentItem(0);
+            // Cancel the camera animation triggered by the paging. Otherwise,
+            // the first marker is centered and the next back will not close the
+            // activity.
+            mMap.stopAnimation();
+        } else {
+            // If the map is at default zoom and the first place is selected,
+            // execute default back action.
+            super.onBackPressed();
         }
     }
 
-    
     private void setUpMapIfNeeded() {
         if (mMap == null) {
             mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map))
@@ -129,7 +144,7 @@ public class MainActivity extends FragmentActivity {
         Drawable shape = getResources().getDrawable(R.drawable.map_dot);
         shape.setBounds(0, 0, mDotMarkerBitmap.getWidth(), mDotMarkerBitmap.getHeight());
         shape.draw(canvas);
-        
+
         // Setup the map.
         FragmentManager fragmentManager = getSupportFragmentManager();
         SupportMapFragment mapFragment = (SupportMapFragment) fragmentManager
@@ -137,11 +152,12 @@ public class MainActivity extends FragmentActivity {
 
         mMap = mapFragment.getMap();
         mMap.setMyLocationEnabled(true);
-
+        
         // This builder will be used to set the initial map zoom/pos.
         final LatLngBounds.Builder builder = LatLngBounds.builder();
         int i = 0;
 
+        // Create the markers for the map.
         for (Place place : PLACES) {
             LatLng point = new LatLng(place.lat, place.lng);
             Marker marker = mMap.addMarker(new MarkerOptions()
@@ -155,37 +171,45 @@ public class MainActivity extends FragmentActivity {
         }
 
         // Show that the first marker has focus.
-        mMarkers[0].setIcon(BitmapDescriptorFactory
-                .defaultMarker(BitmapDescriptorFactory.HUE_RED));
+        mMarkers[0].setIcon(BitmapDescriptorFactory.defaultMarker(PLACE_MARKER_HUE));
 
-        // Once the map has been loaded, zoom to the markers.
+        // Once the map has been loaded, move to the markers.
         mMap.setOnCameraChangeListener(new OnCameraChangeListener() {
             @Override
             public void onCameraChange(CameraPosition position) {
-                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 150));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),
+                        MAP_BOUNDS_PADDING));
                 mMapInitPosition = mMap.getCameraPosition();
                 mMap.setOnCameraChangeListener(null);
             }
         });
 
-        // When a marker is clicked, scroll the view pager to the corresponding
-        // page.
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
-                // XXX This is a slow operation, but we only have 5 markers at the moment.
-                // Fastest way would be to go from maker to place (via map),
+                // This is a slow operation, but work for a few markers.
+                // Better would be to go from maker to place (via map),
                 // then from place to index (store index w/place on creation).
                 int index = Arrays.asList(mMarkers).indexOf(marker);
-                mPlaceViewPager.setCurrentItem(index, true);
-                return false;
+
+                if (index == mPlaceViewPager.getCurrentItem()) {
+                    // Zoom in to show street-level details if the marker is
+                    // already selected.
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.getPosition(),
+                            PLACE_DETAIL_ZOOM));
+                } else {
+                    mPlaceViewPager.setCurrentItem(index, true);
+                }
+
+                // Override default behavior. Otherwise, if the selected marker
+                // is clicked, the above animation is overridden.
+                return true;
             }
         });
 
         // Setup the place view pager.
         mPlaceViewPager = (ViewPager) findViewById(R.id.pager);
-        PlacePagerAdapter pagerAdapter = new PlacePagerAdapter();
-        mPlaceViewPager.setAdapter(pagerAdapter);
+        mPlaceViewPager.setAdapter(new PlacePagerAdapter());
 
         // Add an OnPageChangeListener so that we can change which marker has
         // focus as the page changes.
@@ -206,13 +230,11 @@ public class MainActivity extends FragmentActivity {
                 // Replace the previously selected marker with a dot.
                 mMarkers[lastPage].setIcon(BitmapDescriptorFactory.fromBitmap(mDotMarkerBitmap));
 
-                // Replace the currently selected maker with the full (focused)
-                // marker.
-                mMarkers[position].setIcon(BitmapDescriptorFactory
-                        .defaultMarker(BitmapDescriptorFactory.HUE_RED));
+                // Replace the currently selected maker with the full marker.
+                mMarkers[position].setIcon(BitmapDescriptorFactory.defaultMarker(PLACE_MARKER_HUE));
 
                 lastPage = position;
-                
+
                 // Move the camera to the new place.
                 Place place = mMarkerPlaceMap.get(mMarkers[position]);
                 mMap.animateCamera(CameraUpdateFactory.newLatLng(new LatLng(place.lat, place.lng)));
