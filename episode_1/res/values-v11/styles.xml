@@ -1,0 +1,13 @@
+<resources>
+
+    <style name="AppBaseTheme" parent="android:Theme.Holo.Light">
+    <!-- <style name="AppBaseTheme" parent="android:Theme.Holo.NoActionBar"> -->
+        <!--
+        	Holo Light, no Action Bar
+        	http://stackoverflow.com/questions/14061661/android-theme-holo-light-noactionbar-vs-theme-light-notitlebar
+        -->
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+</resources>
