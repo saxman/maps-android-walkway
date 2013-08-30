@@ -76,6 +76,9 @@ public class MainActivity extends FragmentActivity {
     
     /** Bitmap used for drawing the (dot) markers that don't have focus. */
     private Bitmap mDotMarkerBitmap;
+
+    /** The initial camera position of the map. Used to reset the map state. */
+    private CameraPosition mMapInitPosition;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +93,24 @@ public class MainActivity extends FragmentActivity {
         setUpMapIfNeeded();
     }
 
+    @Override
+    public void onBackPressed() {
+        if (mPlaceViewPager.getCurrentItem() == 0 && mMap.getCameraPosition().equals(mMapInitPosition)) {
+            // If the map is at default zoom and the first place is selected,
+            // execute default back action.
+            super.onBackPressed();
+        } else {
+            mPlaceViewPager.setCurrentItem(0);
+
+            LatLngBounds.Builder builder = LatLngBounds.builder();
+            for (Marker marker : mMarkers) {
+                builder.include(marker.getPosition());
+            }
+            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 150));
+        }
+    }
+
+    
     private void setUpMapIfNeeded() {
         if (mMap == null) {
             mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map))
@@ -142,6 +163,7 @@ public class MainActivity extends FragmentActivity {
             @Override
             public void onCameraChange(CameraPosition position) {
                 mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 150));
+                mMapInitPosition = mMap.getCameraPosition();
                 mMap.setOnCameraChangeListener(null);
             }
         });
