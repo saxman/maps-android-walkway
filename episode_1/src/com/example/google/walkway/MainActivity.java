@@ -215,7 +215,7 @@ public class MainActivity extends FragmentActivity {
         // focus as the page changes.
         mPlaceViewPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             // The index of the last page that was shown.
-            int lastPage = 0;
+            int lastPagePosition = 0;
 
             @Override
             public void onPageScrollStateChanged(int state) {
@@ -228,16 +228,24 @@ public class MainActivity extends FragmentActivity {
             @Override
             public void onPageSelected(int position) {
                 // Replace the previously selected marker with a dot.
-                mMarkers[lastPage].setIcon(BitmapDescriptorFactory.fromBitmap(mDotMarkerBitmap));
+                mMarkers[lastPagePosition].setIcon(BitmapDescriptorFactory.fromBitmap(mDotMarkerBitmap));
 
                 // Replace the currently selected maker with the full marker.
                 mMarkers[position].setIcon(BitmapDescriptorFactory.defaultMarker(PLACE_MARKER_HUE));
 
-                lastPage = position;
-
+                lastPagePosition = position;
+                        
+                LatLng coords = mMarkers[position].getPosition();
+                
+                // We could skip the animation if the marker is in view.
+                // However, markers on the edge of the display would be
+                // partially visible.
+//                if (mMap.getProjection().getVisibleRegion().latLngBounds.contains(coords)) {
+//                    return;
+//                }
+                
                 // Move the camera to the new place.
-                Place place = mMarkerPlaceMap.get(mMarkers[position]);
-                mMap.animateCamera(CameraUpdateFactory.newLatLng(new LatLng(place.lat, place.lng)));
+                mMap.animateCamera(CameraUpdateFactory.newLatLng(coords), 350, null);
             }
         });
     }
