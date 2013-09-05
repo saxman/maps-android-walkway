@@ -68,6 +68,8 @@ public class MainActivity extends FragmentActivity {
     private static final float PLACE_DETAIL_ZOOM = 18f;
     private static final float PLACE_MARKER_HUE = BitmapDescriptorFactory.HUE_RED;
     private static final int MAP_BOUNDS_PADDING = 150;
+    private static final int MAP_DOT_MARKER_SIZE = 25;
+    private static final int PLACE_ANIMATION_MS = 350;
 
 //    private static final String LOG_TAG = MainActivity.class.getName();
     
@@ -139,7 +141,8 @@ public class MainActivity extends FragmentActivity {
 
     private void setUpMap() {
         // Create a marker bitmap from the dot shape drawable.
-        mDotMarkerBitmap = Bitmap.createBitmap(25, 25, Bitmap.Config.ARGB_8888);
+        mDotMarkerBitmap = Bitmap.createBitmap(MAP_DOT_MARKER_SIZE, MAP_DOT_MARKER_SIZE,
+                Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(mDotMarkerBitmap);
         Drawable shape = getResources().getDrawable(R.drawable.map_dot);
         shape.setBounds(0, 0, mDotMarkerBitmap.getWidth(), mDotMarkerBitmap.getHeight());
@@ -193,10 +196,8 @@ public class MainActivity extends FragmentActivity {
                 int index = Arrays.asList(mMarkers).indexOf(marker);
 
                 if (index == mPlaceViewPager.getCurrentItem()) {
-                    // Zoom in to show street-level details if the marker is
-                    // already selected.
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.getPosition(),
-                            PLACE_DETAIL_ZOOM));
+                    // Zoom in if the marker is already selected.
+                    zoomToPlace(index);
                 } else {
                     mPlaceViewPager.setCurrentItem(index, true);
                 }
@@ -217,14 +218,10 @@ public class MainActivity extends FragmentActivity {
             // The index of the last page that was shown.
             int lastPagePosition = 0;
 
-            @Override
-            public void onPageScrollStateChanged(int state) {
-            }
-
-            @Override
-            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-            }
-
+            /*
+             * When a new page is displayed, change the highlighted marker.
+             * @see android.support.v4.view.ViewPager.OnPageChangeListener#onPageSelected(int)
+             */
             @Override
             public void onPageSelected(int position) {
                 // Replace the previously selected marker with a dot.
@@ -234,24 +231,35 @@ public class MainActivity extends FragmentActivity {
                 mMarkers[position].setIcon(BitmapDescriptorFactory.defaultMarker(PLACE_MARKER_HUE));
 
                 lastPagePosition = position;
-                        
                 LatLng coords = mMarkers[position].getPosition();
                 
-                // We could skip the animation if the marker is in view.
-                // However, markers on the edge of the display would be
-                // partially visible.
-//                if (mMap.getProjection().getVisibleRegion().latLngBounds.contains(coords)) {
-//                    return;
-//                }
-                
                 // Move the camera to the new place.
-                mMap.animateCamera(CameraUpdateFactory.newLatLng(coords), 350, null);
+                mMap.animateCamera(CameraUpdateFactory.newLatLng(coords), PLACE_ANIMATION_MS, null);
+            }
+            
+            @Override
+            public void onPageScrollStateChanged(int state) {
+            }
+
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
             }
         });
     }
 
     /**
-     * PagerAdapter that creates Views of place info for the ViewPager.
+     * Zoom to place to show street-level detail.
+     * 
+     * @param position The index of the place in the PLACES collection.
+     */
+    private void zoomToPlace(int position) {
+        Place place = PLACES.get(position);
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(place.lat, place.lng),
+                PLACE_DETAIL_ZOOM));
+    }
+
+    /**
+     * PagerAdapter that creates Views with place info for the ViewPager.
      */
     private class PlacePagerAdapter extends PagerAdapter {
         @Override
@@ -265,9 +273,7 @@ public class MainActivity extends FragmentActivity {
             // If the view is clicked, zoom in on its corresponding marker.
             view.setOnClickListener(new OnClickListener() {
                 public void onClick(View view) {
-                    Place place = PLACES.get(position);
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
-                            new LatLng(place.lat, place.lng), 18f));
+                    zoomToPlace(position);
                 }
             });
 
