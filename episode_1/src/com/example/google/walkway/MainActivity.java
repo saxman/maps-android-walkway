@@ -67,9 +67,8 @@ public class MainActivity extends FragmentActivity {
     // UI constants
     private static final float PLACE_DETAIL_ZOOM = 18f;
     private static final float PLACE_MARKER_HUE = BitmapDescriptorFactory.HUE_RED;
-    private static final int MAP_BOUNDS_PADDING = 150;
-    private static final int MAP_DOT_MARKER_SIZE = 25;
     private static final int PLACE_ANIMATION_MS = 350;
+    private static final int MAP_RECENTER_ANIMATION_MS = 350;
 
 //    private static final String LOG_TAG = MainActivity.class.getName();
     
@@ -112,8 +111,10 @@ public class MainActivity extends FragmentActivity {
             for (Marker marker : mMarkers) {
                 builder.include(marker.getPosition());
             }
-            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),
-                    MAP_BOUNDS_PADDING));
+            int px = getResources().getDimensionPixelSize(R.dimen.map_padding);
+            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), px),
+                    MAP_RECENTER_ANIMATION_MS, null);
+            // XXX Need different animation duration for zoom vs recenter
         } else if (mPlaceViewPager.getCurrentItem() != 0) {
             // Reset the pager to its original state.
             mPlaceViewPager.setCurrentItem(0);
@@ -141,8 +142,8 @@ public class MainActivity extends FragmentActivity {
 
     private void setUpMap() {
         // Create a marker bitmap from the dot shape drawable.
-        mDotMarkerBitmap = Bitmap.createBitmap(MAP_DOT_MARKER_SIZE, MAP_DOT_MARKER_SIZE,
-                Bitmap.Config.ARGB_8888);
+        int px = getResources().getDimensionPixelSize(R.dimen.map_dot_marker_size);
+        mDotMarkerBitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(mDotMarkerBitmap);
         Drawable shape = getResources().getDrawable(R.drawable.map_dot);
         shape.setBounds(0, 0, mDotMarkerBitmap.getWidth(), mDotMarkerBitmap.getHeight());
@@ -165,6 +166,7 @@ public class MainActivity extends FragmentActivity {
             LatLng point = new LatLng(place.lat, place.lng);
             Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(point)
+                    .anchor(.5f, .5f)
                     .icon(BitmapDescriptorFactory.fromBitmap(mDotMarkerBitmap)));
             
             mMarkerPlaceMap.put(marker, place);
@@ -180,8 +182,8 @@ public class MainActivity extends FragmentActivity {
         mMap.setOnCameraChangeListener(new OnCameraChangeListener() {
             @Override
             public void onCameraChange(CameraPosition position) {
-                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),
-                        MAP_BOUNDS_PADDING));
+                int px = getResources().getDimensionPixelSize(R.dimen.map_padding);
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), px));
                 mMapInitPosition = mMap.getCameraPosition();
                 mMap.setOnCameraChangeListener(null);
             }
@@ -255,7 +257,8 @@ public class MainActivity extends FragmentActivity {
     private void zoomToPlace(int position) {
         Place place = PLACES.get(position);
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(place.lat, place.lng),
-                PLACE_DETAIL_ZOOM));
+                PLACE_DETAIL_ZOOM), MAP_RECENTER_ANIMATION_MS, null);
+        // XXX Need independent animation ms for place zoom in/out
     }
 
     /**

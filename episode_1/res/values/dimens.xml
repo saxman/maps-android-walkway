@@ -4,4 +4,7 @@
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
 
+    <dimen name="map_dot_marker_size">12dp</dimen>
+    
+    <dimen name="map_padding">20dp</dimen>
 </resources>
